@@ -1,0 +1,5 @@
+(C)opyright Net-ng 2014-2015
+
+This is Net-ng proprietary source code
+Any reproduction modification or use without prior written
+approval from Net-ng is strictly forbidden.
