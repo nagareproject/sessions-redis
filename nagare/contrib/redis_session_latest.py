@@ -41,8 +41,9 @@ class Sessions(common.Sessions):
         """Initialization
 
         In:
-          - ``host`` -- address of the memcache server
-          - ``port`` -- port of the memcache server
+          - ``host`` -- address of the redis server
+          - ``port`` -- port of the redis server
+          - ``db`` -- id of the redis database
           - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
           - ``lock_ttl`` -- session locks timeout, in seconds (0 = no timeout)
           - ``lock_poll_time`` -- wait time between two lock acquisition tries, in seconds

@@ -10,7 +10,6 @@ KEY_PREFIX = 'nagare_'
 
 
 class Sessions(common.Sessions):
-
     """Sessions manager for sessions kept in an external redis server
     """
     spec = dict(
@@ -20,29 +19,31 @@ class Sessions(common.Sessions):
         ttl='integer(default=0)',
         lock_ttl='integer(default=0)',
         lock_poll_time='float(default=0.1)',
-        lock_max_wait_time='float(default=5.)',
         reset='boolean(default=True)',
     )
     spec.update(common.Sessions.spec)
 
     def __init__(
-        self,
-        host='127.0.0.1',
-        port=6379,
-        db=0,
-        ttl=0,
-        lock_ttl=5,
-        lock_poll_time=0.1,
-        lock_max_wait_time=5.,
-        reset=False,
-        **kw
+            self,
+            host='127.0.0.1',
+            port=6379,
+            db=0,
+            ttl=0,
+            lock_ttl=5,
+            lock_poll_time=0.1,
+            reset=False,
+            **kw
     ):
         """Initialization
 
         In:
           - ``host`` -- address of the redis server
           - ``port`` -- port of the redis server
-          - ``db`` -- redis database id
+          - ``db`` -- id of the redis database
+          - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
+          - ``lock_ttl`` -- session locks timeout, in seconds (0 = no timeout)
+          - ``lock_poll_time`` -- wait time between two lock acquisition tries, in seconds
+          - ``reset`` -- do a reset of all the sessions on startup ?
         """
         super(Sessions, self).__init__(**kw)
 
@@ -52,7 +53,6 @@ class Sessions(common.Sessions):
         self.ttl = ttl
         self.lock_ttl = lock_ttl
         self.lock_poll_time = lock_poll_time
-        self.lock_max_wait_time = lock_max_wait_time
 
         if reset:
             self.flush_all()
@@ -69,10 +69,7 @@ class Sessions(common.Sessions):
         # Let's the super class validate the configuration file
         conf = super(Sessions, self).set_config(filename, conf, error)
 
-        for arg_name in (
-            'host', 'port', 'db', 'ttl', 'lock_ttl',
-                            'lock_poll_time', 'lock_max_wait_time',
-        ):
+        for arg_name in ('host', 'port', 'db', 'ttl', 'lock_ttl', 'lock_poll_time'):
             setattr(self, arg_name, conf[arg_name])
 
         if conf['reset']:
