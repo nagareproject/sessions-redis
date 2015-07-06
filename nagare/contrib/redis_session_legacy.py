@@ -73,7 +73,7 @@ class Sessions(common.Sessions):
         # Let's the super class validate the configuration file
         conf = super(Sessions, self).set_config(filename, conf, error)
 
-        for arg_name in ('host', 'port', 'db', 'ttl', 'lock_ttl', 'lock_poll_time'):
+        for arg_name in ('host', 'port', 'db', 'ttl', 'lock_ttl', 'lock_poll_time', 'lock_max_wait_time'):
             setattr(self, arg_name, conf[arg_name])
 
         if conf['reset']:
