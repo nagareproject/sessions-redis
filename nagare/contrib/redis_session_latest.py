@@ -22,6 +22,7 @@ class Sessions(common.Sessions):
         ttl='integer(default=0)',
         lock_ttl='integer(default=0)',
         lock_poll_time='float(default=0.1)',
+        lock_max_wait_time='float(default=5.)',
         reset='boolean(default=True)',
         serializer='string(default="nagare.sessions.serializer:Pickle")'
     ))
@@ -34,6 +35,7 @@ class Sessions(common.Sessions):
         ttl=0,
         lock_ttl=5,
         lock_poll_time=0.1,
+        lock_max_wait_time=5,
         reset=False,
         serializer=None,
         **kw
@@ -47,6 +49,7 @@ class Sessions(common.Sessions):
           - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
           - ``lock_ttl`` -- session locks timeout, in seconds (0 = no timeout)
           - ``lock_poll_time`` -- wait time between two lock acquisition tries, in seconds
+          - ``lock_max_wait_time`` -- maximum time to wait to acquire the lock, in seconds
           - ``reset`` -- do a reset of all the sessions on startup ?
           - ``serializer`` -- serializer / deserializer of the states
         """
@@ -58,6 +61,7 @@ class Sessions(common.Sessions):
         self.ttl = ttl
         self.lock_ttl = lock_ttl
         self.lock_poll_time = lock_poll_time
+        self.lock_max_wait_time = lock_max_wait_time
 
         if reset:
             self.flush_all()
@@ -76,7 +80,7 @@ class Sessions(common.Sessions):
         for arg_name in (
             'host', 'port', 'db', 'ttl', 'lock_ttl',
                             'lock_poll_time',
-                            #'lock_max_wait_time',
+                            'lock_max_wait_time',
                             #'min_compress_len', 'debug'
         ):
             setattr(self, arg_name, conf[arg_name])
@@ -121,7 +125,8 @@ class Sessions(common.Sessions):
         lock = connection.lock(
             (KEY_PREFIX + 'lock') % session_id,
             self.lock_ttl,
-            self.lock_poll_time)
+            self.lock_poll_time,
+            self.lock_max_wait_time)
         return lock
 
     def create(self, session_id, secure_id, lock):
