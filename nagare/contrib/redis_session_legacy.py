@@ -95,6 +95,12 @@ class Sessions(common.Sessions):
 
         return connection
 
+    def _get_lock(self, connection, session_id):
+        return connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
+                               self.lock_ttl,
+                               self.lock_poll_time,
+                               self.lock_max_wait_time)
+
     def flush_all(self):
         """Delete all the contents in the redis server
         """
@@ -115,10 +121,7 @@ class Sessions(common.Sessions):
         """
         connection = self._get_connection()
 
-        lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
-                               self.lock_ttl,
-                               self.lock_poll_time,
-                               self.lock_max_wait_time)
+        lock = self._get_lock(connection, session_id)
         lock.acquire()
 
         connection = connection.pipeline()
@@ -154,10 +157,7 @@ class Sessions(common.Sessions):
         """
         connection = self._get_connection()
 
-        lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
-                               self.lock_ttl,
-                               self.lock_poll_time,
-                               self.lock_max_wait_time)
+        lock = self._get_lock(connection, session_id)
         lock.acquire()
 
         state_id = state_id.zfill(5)
