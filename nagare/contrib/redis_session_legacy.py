@@ -19,6 +19,7 @@ class Sessions(common.Sessions):
         ttl='integer(default=0)',
         lock_ttl='integer(default=0)',
         lock_poll_time='float(default=0.1)',
+        lock_max_wait_time='float(default=5.)',
         reset='boolean(default=True)',
     )
     spec.update(common.Sessions.spec)
@@ -31,6 +32,7 @@ class Sessions(common.Sessions):
             ttl=0,
             lock_ttl=5,
             lock_poll_time=0.1,
+            lock_max_wait_time=5,
             reset=False,
             **kw
     ):
@@ -43,6 +45,7 @@ class Sessions(common.Sessions):
           - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
           - ``lock_ttl`` -- session locks timeout, in seconds (0 = no timeout)
           - ``lock_poll_time`` -- wait time between two lock acquisition tries, in seconds
+          - ``lock_max_wait_time`` -- maximum time to wait to acquire the lock, in seconds
           - ``reset`` -- do a reset of all the sessions on startup ?
         """
         super(Sessions, self).__init__(**kw)
@@ -53,6 +56,7 @@ class Sessions(common.Sessions):
         self.ttl = ttl
         self.lock_ttl = lock_ttl
         self.lock_poll_time = lock_poll_time
+        self.lock_max_wait_time = lock_max_wait_time
 
         if reset:
             self.flush_all()
@@ -113,7 +117,8 @@ class Sessions(common.Sessions):
 
         lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
                                self.lock_ttl,
-                               self.lock_poll_time)
+                               self.lock_poll_time,
+                               self.lock_max_wait_time)
         lock.acquire()
 
         connection = connection.pipeline()
@@ -151,7 +156,8 @@ class Sessions(common.Sessions):
 
         lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
                                self.lock_ttl,
-                               self.lock_poll_time)
+                               self.lock_poll_time,
+                               self.lock_max_wait_time)
         lock.acquire()
 
         state_id = state_id.zfill(5)
