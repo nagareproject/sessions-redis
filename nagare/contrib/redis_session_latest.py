@@ -212,12 +212,12 @@ class Sessions(common.Sessions):
             ('state', 'sess_id', 'sess_data', state_id)
         )
 
+        # ``None`` means key was not found
+        if secure_id is None or session_data is None or last_state_id is None or state_data is None:
+            raise ExpirationError()
+
         session_data = self._convert_stored_val(session_data)
         secure_id = self._convert_stored_val(secure_id)
-
-        # TODO modify with or ?
-        if not (secure_id and session_data and last_state_id and state_data):
-            raise ExpirationError()
 
         return int(last_state_id), secure_id, session_data, state_data
 
