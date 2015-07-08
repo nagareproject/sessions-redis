@@ -15,7 +15,7 @@ setup(
     packages=find_packages(),
     license='LICENSE.txt',
     zip_safe=False,
-    install_requires=('nagare>=0.4.1', 'redis'),
+    install_requires=('nagare>=0.4.1', 'redis>=2.10.0'),
     namespace_packages=('nagare', 'nagare.contrib', ),
     extras_require={'test': ('nose', 'coverage', 'mock', 'mockredispy')},
     entry_points='''
