@@ -3,6 +3,8 @@
 
 import redis
 
+from io import BytesIO
+
 from nagare import local
 from nagare.sessions import ExpirationError, common
 
@@ -101,6 +103,33 @@ class Sessions(common.Sessions):
                                self.lock_poll_time,
                                self.lock_max_wait_time)
 
+    def _convert_val_to_store(self, val):
+        """Returns the given value as a Redis storable representation
+        Mimics what memcache:Client._val_to_store_info does for objects with Memcache
+
+        In:
+          - ``val`` -- Value to store
+
+        Return:
+          - The value as a Redis storable representation
+        """
+        file_ = BytesIO()
+        pickler = self.pickler(file_, protocol=-1)
+        pickler.dump(val)
+        return file_.getvalue()
+
+    def _convert_stored_val(self, val):
+        """Returns the value from a stored representation in Redis
+        Mimics what memcache:Client._recv_value does for objects with Memcache
+
+        In:
+          - ``val`` -- Value stored in Redis
+
+        Return:
+          - The value
+        """
+        return self.unpickler(BytesIO(val)).load()
+
     def flush_all(self):
         """Delete all the contents in the redis server
         """
@@ -127,10 +156,10 @@ class Sessions(common.Sessions):
         connection = connection.pipeline()
 
         connection.hmset(KEY_PREFIX + session_id, {
-            '_sess_id': secure_id,
-            '_sess_data': None,
-            '_state': '0',
-            '00000': {}
+            '_sess_id': self._convert_val_to_store(secure_id),
+            '_sess_data': self._convert_val_to_store(None),
+            '_state': 0,
+            '00000': self._convert_val_to_store({})
         })
         if self.ttl:
             connection.expire(KEY_PREFIX + session_id, self.ttl)
@@ -167,8 +196,12 @@ class Sessions(common.Sessions):
             ('_sess_id', '_sess_data', '_state', state_id)
         )
 
-        if not (secure_id and session_data and last_state_id and state_data):
+        # ``None`` means key was not found
+        if secure_id is None or session_data is None or last_state_id is None or state_data is None:
             raise ExpirationError()
+
+        session_data = self._convert_stored_val(session_data)
+        secure_id = self._convert_stored_val(secure_id)
 
         if not use_same_state:
             state_id = last_state_id
@@ -196,8 +229,8 @@ class Sessions(common.Sessions):
             connection.hincrby(KEY_PREFIX + session_id, '_state', 1)
 
         connection.hmset(KEY_PREFIX + session_id, {
-            '_sess_id': secure_id,
-            '_sess_data': session_data,
+            '_sess_id': self._convert_val_to_store(secure_id),
+            '_sess_data': self._convert_val_to_store(session_data),
             '%05d' % state_id: state_data
         })
 
