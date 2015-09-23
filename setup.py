@@ -1,5 +1,5 @@
 # (C)opyright Net-ng 2008-2015
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 from setuptools import setup, find_packages
 
