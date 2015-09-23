@@ -48,7 +48,7 @@ Requirements
 
 * Python 2.6+ with nagare latest
 * Stackless Python 2.6+ with Nagare >= 0.4.1
-* redis
+* redis >= 2.6.0
 
 
 License

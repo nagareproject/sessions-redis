@@ -3,6 +3,8 @@
 
 import redis
 
+from io import BytesIO
+
 from nagare import local
 from nagare.sessions import ExpirationError, common
 
@@ -19,6 +21,7 @@ class Sessions(common.Sessions):
         ttl='integer(default=0)',
         lock_ttl='integer(default=0)',
         lock_poll_time='float(default=0.1)',
+        lock_max_wait_time='float(default=5.)',
         reset='boolean(default=True)',
     )
     spec.update(common.Sessions.spec)
@@ -31,6 +34,7 @@ class Sessions(common.Sessions):
             ttl=0,
             lock_ttl=5,
             lock_poll_time=0.1,
+            lock_max_wait_time=5,
             reset=False,
             **kw
     ):
@@ -43,6 +47,7 @@ class Sessions(common.Sessions):
           - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
           - ``lock_ttl`` -- session locks timeout, in seconds (0 = no timeout)
           - ``lock_poll_time`` -- wait time between two lock acquisition tries, in seconds
+          - ``lock_max_wait_time`` -- maximum time to wait to acquire the lock, in seconds
           - ``reset`` -- do a reset of all the sessions on startup ?
         """
         super(Sessions, self).__init__(**kw)
@@ -53,6 +58,7 @@ class Sessions(common.Sessions):
         self.ttl = ttl
         self.lock_ttl = lock_ttl
         self.lock_poll_time = lock_poll_time
+        self.lock_max_wait_time = lock_max_wait_time
 
         if reset:
             self.flush_all()
@@ -69,7 +75,7 @@ class Sessions(common.Sessions):
         # Let's the super class validate the configuration file
         conf = super(Sessions, self).set_config(filename, conf, error)
 
-        for arg_name in ('host', 'port', 'db', 'ttl', 'lock_ttl', 'lock_poll_time'):
+        for arg_name in ('host', 'port', 'db', 'ttl', 'lock_ttl', 'lock_poll_time', 'lock_max_wait_time'):
             setattr(self, arg_name, conf[arg_name])
 
         if conf['reset']:
@@ -91,6 +97,39 @@ class Sessions(common.Sessions):
 
         return connection
 
+    def _get_lock(self, connection, session_id):
+        return connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
+                               self.lock_ttl,
+                               self.lock_poll_time,
+                               self.lock_max_wait_time)
+
+    def _convert_val_to_store(self, val):
+        """Returns the given value as a Redis storable representation
+        Mimics what memcache:Client._val_to_store_info does for objects with Memcache
+
+        In:
+          - ``val`` -- Value to store
+
+        Return:
+          - The value as a Redis storable representation
+        """
+        file_ = BytesIO()
+        pickler = self.pickler(file_, protocol=-1)
+        pickler.dump(val)
+        return file_.getvalue()
+
+    def _convert_stored_val(self, val):
+        """Returns the value from a stored representation in Redis
+        Mimics what memcache:Client._recv_value does for objects with Memcache
+
+        In:
+          - ``val`` -- Value stored in Redis
+
+        Return:
+          - The value
+        """
+        return self.unpickler(BytesIO(val)).load()
+
     def flush_all(self):
         """Delete all the contents in the redis server
         """
@@ -111,18 +150,16 @@ class Sessions(common.Sessions):
         """
         connection = self._get_connection()
 
-        lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
-                               self.lock_ttl,
-                               self.lock_poll_time)
+        lock = self._get_lock(connection, session_id)
         lock.acquire()
 
         connection = connection.pipeline()
 
         connection.hmset(KEY_PREFIX + session_id, {
-            '_sess_id': secure_id,
-            '_sess_data': None,
-            '_state': '0',
-            '00000': {}
+            '_sess_id': self._convert_val_to_store(secure_id),
+            '_sess_data': self._convert_val_to_store(None),
+            '_state': 0,
+            '00000': self._convert_val_to_store({})
         })
         if self.ttl:
             connection.expire(KEY_PREFIX + session_id, self.ttl)
@@ -149,9 +186,7 @@ class Sessions(common.Sessions):
         """
         connection = self._get_connection()
 
-        lock = connection.lock('%slock_%s' % (KEY_PREFIX, session_id),
-                               self.lock_ttl,
-                               self.lock_poll_time)
+        lock = self._get_lock(connection, session_id)
         lock.acquire()
 
         state_id = state_id.zfill(5)
@@ -161,8 +196,12 @@ class Sessions(common.Sessions):
             ('_sess_id', '_sess_data', '_state', state_id)
         )
 
-        if not (secure_id and session_data and last_state_id and state_data):
+        # ``None`` means key was not found
+        if secure_id is None or session_data is None or last_state_id is None or state_data is None:
             raise ExpirationError()
+
+        session_data = self._convert_stored_val(session_data)
+        secure_id = self._convert_stored_val(secure_id)
 
         if not use_same_state:
             state_id = last_state_id
@@ -190,8 +229,8 @@ class Sessions(common.Sessions):
             connection.hincrby(KEY_PREFIX + session_id, '_state', 1)
 
         connection.hmset(KEY_PREFIX + session_id, {
-            '_sess_id': secure_id,
-            '_sess_data': session_data,
+            '_sess_id': self._convert_val_to_store(secure_id),
+            '_sess_data': self._convert_val_to_store(session_data),
             '%05d' % state_id: state_data
         })
 
