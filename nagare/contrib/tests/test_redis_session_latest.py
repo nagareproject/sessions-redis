@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 import unittest
 import random
-from mockredis import mock_redis_client
+from .mock_redis import mock_redis_client
 from mock import patch
 from nagare import local
 from nagare.contrib.redis_session_latest import Sessions
