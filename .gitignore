@@ -14,3 +14,4 @@ dist
 .settings
 nbproject
 .idea
+.eggs
