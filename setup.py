@@ -1,5 +1,5 @@
 # (C)opyright Net-ng 2008-2015
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 from setuptools import setup, find_packages
 
@@ -15,9 +15,11 @@ setup(
     packages=find_packages(),
     license='LICENSE.txt',
     zip_safe=False,
-    install_requires=('nagare>=0.4.1', 'redis', 'mock', 'mockredispy'),
+    install_requires=('nagare>=0.4.1', 'redis>=2.10.0'),
     namespace_packages=('nagare', 'nagare.contrib', ),
-    extras_require={'test': ('nose', 'coverage')},
+    tests_require=('nose', 'coverage', 'mock', 'mockredis'),
+    extras_require={'test': ('nose', 'coverage', 'mock', 'mockredis')},
+    test_suite='nose.collector',
     entry_points='''
       [nagare.sessions]
       redis = nagare.contrib.redis_session:Sessions
