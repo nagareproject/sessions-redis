@@ -17,7 +17,9 @@ setup(
     zip_safe=False,
     install_requires=('nagare>=0.4.1', 'redis>=2.10.0'),
     namespace_packages=('nagare', 'nagare.contrib', ),
-    extras_require={'test': ('nose', 'coverage', 'mock', 'mockredispy')},
+    tests_require=('nose', 'coverage', 'mock', 'mockredis'),
+    extras_require={'test': ('nose', 'coverage', 'mock', 'mockredis')},
+    test_suite='nose.collector',
     entry_points='''
       [nagare.sessions]
       redis = nagare.contrib.redis_session:Sessions
