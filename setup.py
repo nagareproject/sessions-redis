@@ -15,7 +15,7 @@ setup(
     packages=find_packages(),
     license='LICENSE.txt',
     zip_safe=False,
-    install_requires=('nagare>=0.4.1', 'redis>=2.10.0'),
+    install_requires=('nagare>=0.4.1', 'redis>=2.10.0', 'redis-py-cluster'),
     namespace_packages=('nagare', 'nagare.contrib', ),
     tests_require=('nose', 'coverage', 'mock', 'mockredis'),
     extras_require={'test': ('nose', 'coverage', 'mock', 'mockredis')},

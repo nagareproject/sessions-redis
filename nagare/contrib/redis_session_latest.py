@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import redis
+import rediscluster
 
 from io import BytesIO
 
@@ -26,7 +27,8 @@ class Sessions(common.Sessions):
         lock_poll_time='float(default=0.1)',
         lock_max_wait_time='float(default=5.)',
         reset='boolean(default=True)',
-        serializer='string(default="nagare.sessions.serializer:Pickle")'
+        serializer='string(default="nagare.sessions.serializer:Pickle")',
+        cluster='boolean(default=False)'
     ))
 
     def __init__(
@@ -40,6 +42,7 @@ class Sessions(common.Sessions):
         lock_max_wait_time=5,
         reset=False,
         serializer=None,
+        cluster=False,
         **kw
     ):
         """Initialization
@@ -64,6 +67,7 @@ class Sessions(common.Sessions):
         self.lock_ttl = lock_ttl
         self.lock_poll_time = lock_poll_time
         self.lock_max_wait_time = lock_max_wait_time
+        self.cluster = cluster
 
         if reset:
             self.flush_all()
@@ -102,9 +106,15 @@ class Sessions(common.Sessions):
         connection = getattr(local.worker, 'redis_connection', None)
 
         if connection is None:
-            connection = redis.Redis(
-                host=self.host, port=self.port, db=self.db)
-            local.worker.redis_connection = connection
+            if self.cluster:
+                connection = rediscluster.StrictRedisCluster(
+                startup_nodes=[{"host": self.host, "port": self.port}],
+                decode_responses=True,
+                skip_full_coverage_check=True)
+            else:
+                connection = redis.Redis(
+                    host=self.host, port=self.port, db=self.db)
+                local.worker.redis_connection = connection
 
         return connection
 
