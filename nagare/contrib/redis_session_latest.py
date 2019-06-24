@@ -10,30 +10,33 @@ from nagare import local
 from nagare.sessions import ExpirationError, common
 from nagare.sessions.serializer import Pickle
 
-KEY_PREFIX = 'nagare_%d_'
+KEY_PREFIX = "nagare_%d_"
 
 
 class Sessions(common.Sessions):
 
     """Sessions manager for sessions kept in an external redis server
     """
+
     spec = common.Sessions.spec.copy()
-    spec.update(dict(
-        host='string(default="127.0.0.1")',
-        port='integer(default=6379)',
-        db='integer(default=0)',
-        ttl='integer(default=0)',
-        lock_ttl='integer(default=0)',
-        lock_poll_time='float(default=0.1)',
-        lock_max_wait_time='float(default=5.)',
-        reset='boolean(default=True)',
-        serializer='string(default="nagare.sessions.serializer:Pickle")',
-        cluster='boolean(default=False)'
-    ))
+    spec.update(
+        dict(
+            host='string(default="127.0.0.1")',
+            port="integer(default=6379)",
+            db="integer(default=0)",
+            ttl="integer(default=0)",
+            lock_ttl="integer(default=0)",
+            lock_poll_time="float(default=0.1)",
+            lock_max_wait_time="float(default=5.)",
+            reset="boolean(default=True)",
+            serializer='string(default="nagare.sessions.serializer:Pickle")',
+            cluster="boolean(default=False)",
+        )
+    )
 
     def __init__(
         self,
-        host='127.0.0.1',
+        host="127.0.0.1",
         port=6379,
         db=0,
         ttl=0,
@@ -84,14 +87,18 @@ class Sessions(common.Sessions):
         conf = super(Sessions, self).set_config(filename, conf, error)
 
         for arg_name in (
-            'host', 'port', 'db', 'ttl', 'lock_ttl',
-                            'lock_poll_time',
-                            'lock_max_wait_time',
-                            #'min_compress_len', 'debug'
+            "host",
+            "port",
+            "db",
+            "ttl",
+            "lock_ttl",
+            "lock_poll_time",
+            "lock_max_wait_time",
+            #'min_compress_len', 'debug'
         ):
             setattr(self, arg_name, conf[arg_name])
 
-        if conf['reset']:
+        if conf["reset"]:
             self.flush_all()
 
         return conf
@@ -103,17 +110,17 @@ class Sessions(common.Sessions):
           - the connection
         """
         # The connection objects are local to the workers
-        connection = getattr(local.worker, 'redis_connection', None)
+        connection = getattr(local.worker, "redis_connection", None)
 
         if connection is None:
             if self.cluster:
                 connection = rediscluster.StrictRedisCluster(
-                startup_nodes=[{"host": self.host, "port": self.port}],
-                decode_responses=True,
-                skip_full_coverage_check=True)
+                    startup_nodes=[{"host": self.host, "port": self.port}],
+                    decode_responses=True,
+                    skip_full_coverage_check=True,
+                )
             else:
-                connection = redis.Redis(
-                    host=self.host, port=self.port, db=self.db)
+                connection = redis.Redis(host=self.host, port=self.port, db=self.db)
                 local.worker.redis_connection = connection
 
         return connection
@@ -162,10 +169,8 @@ class Sessions(common.Sessions):
         """
         connection = self._get_connection()
         lock = connection.lock(
-            (KEY_PREFIX + 'lock') % session_id,
-            self.lock_ttl,
-            self.lock_poll_time,
-            self.lock_max_wait_time)
+            (KEY_PREFIX + "lock") % session_id, self.lock_ttl, self.lock_poll_time, self.lock_max_wait_time
+        )
         return lock
 
     def create(self, session_id, secure_id, lock):
@@ -180,12 +185,14 @@ class Sessions(common.Sessions):
         connection = connection.pipeline()
 
         connection.hmset(
-            KEY_PREFIX % session_id, {
-                'state': 0,
-                'sess_id': self._convert_val_to_store(secure_id),
-                'sess_data': self._convert_val_to_store(None),
-                '00000': self._convert_val_to_store({})
-            })
+            KEY_PREFIX % session_id,
+            {
+                "state": 0,
+                "sess_id": self._convert_val_to_store(secure_id),
+                "sess_data": self._convert_val_to_store(None),
+                "00000": self._convert_val_to_store({}),
+            },
+        )
 
         if self.ttl:
             connection.expire(KEY_PREFIX % session_id, self.ttl)
@@ -213,13 +220,12 @@ class Sessions(common.Sessions):
           - data kept into the session
           - data kept into the state
         """
-        state_id = '%05d' % state_id
+        state_id = "%05d" % state_id
 
         connection = self._get_connection()
 
         last_state_id, secure_id, session_data, state_data = connection.hmget(
-            KEY_PREFIX % session_id,
-            ('state', 'sess_id', 'sess_data', state_id)
+            KEY_PREFIX % session_id, ("state", "sess_id", "sess_data", state_id)
         )
 
         # ``None`` means key was not found
@@ -246,13 +252,16 @@ class Sessions(common.Sessions):
         connection = connection.pipeline(True)
 
         if not use_same_state:
-            connection.hincrby(KEY_PREFIX % session_id, 'state', 1)
+            connection.hincrby(KEY_PREFIX % session_id, "state", 1)
 
-        connection.hmset(KEY_PREFIX % session_id, {
-            'sess_id': self._convert_val_to_store(secure_id),
-            'sess_data': self._convert_val_to_store(session_data),
-            '%05d' % state_id: state_data
-        })
+        connection.hmset(
+            KEY_PREFIX % session_id,
+            {
+                "sess_id": self._convert_val_to_store(secure_id),
+                "sess_data": self._convert_val_to_store(session_data),
+                "%05d" % state_id: state_data,
+            },
+        )
 
         if self.ttl:
             connection.expire(KEY_PREFIX % session_id, self.ttl)

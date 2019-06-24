@@ -10,9 +10,8 @@ from nagare.contrib.redis_session_latest import Sessions
 random.seed(2 ** 8)
 
 
-@patch('redis.Redis', mock_redis_client)
+@patch("redis.Redis", mock_redis_client)
 class RedisSessionTest(unittest.TestCase):
-
     def setUp(self):
 
         self.session = Sessions()
