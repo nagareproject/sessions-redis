@@ -1,5 +1,6 @@
 # (C)opyright Net-ng 2008-2015
 # -*- coding: utf-8 -*-
+import os
 
 import redis
 import rediscluster
@@ -63,8 +64,8 @@ class Sessions(common.Sessions):
         """
         super(Sessions, self).__init__(serializer=serializer or Pickle, **kw)
 
-        self.host = host
-        self.port = port
+        self.host = os.environ.get("REDIS_HOST", host)
+        self.port = os.environ.get("REDIS_PORT", host)
         self.db = db
         self.ttl = ttl
         self.lock_ttl = lock_ttl
