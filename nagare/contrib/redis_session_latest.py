@@ -95,7 +95,7 @@ class Sessions(common.Sessions):
             "lock_ttl",
             "lock_poll_time",
             "lock_max_wait_time",
-            #'min_compress_len', 'debug'
+            "cluster"
         ):
             setattr(self, arg_name, conf[arg_name])
 
@@ -250,7 +250,10 @@ class Sessions(common.Sessions):
           - ``state_data`` -- data to keep into the state
         """
         connection = self._get_connection()
-        connection = connection.pipeline(True)
+        if self.cluster:
+            connection = connection.pipeline()
+        else:
+            connection = connection.pipeline(True)
 
         if not use_same_state:
             connection.hincrby(KEY_PREFIX % session_id, "state", 1)
