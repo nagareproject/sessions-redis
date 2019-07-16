@@ -117,7 +117,7 @@ class Sessions(common.Sessions):
             if self.cluster:
                 connection = rediscluster.StrictRedisCluster(
                     startup_nodes=[{"host": self.host, "port": self.port}],
-                    decode_responses=True,
+                    decode_responses=False,
                     skip_full_coverage_check=True,
                 )
             else:
