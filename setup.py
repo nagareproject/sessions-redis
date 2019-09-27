@@ -9,22 +9,16 @@
 # this distribution.
 # --
 
-from os import path
+import os
 
 from setuptools import setup, find_packages
 
 
-here = path.normpath(path.dirname(__file__))
-
-with open(path.join(here, 'VERSION')) as version:
-    VERSION = version.readline().rstrip()
-
-with open(path.join(here, 'README.rst')) as long_description:
-    LONG_DESCRIPTION = long_description.readline().rstrip()
+with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as long_description:
+    LONG_DESCRIPTION = long_description.readline()
 
 setup(
     name='nagare-sessions-redis',
-    version=VERSION,
     author='Net-ng',
     author_email='alain.poirier@net-ng.com',
     description='Manager for sessions in redis',
@@ -33,8 +27,9 @@ setup(
     keywords='',
     url='https://github.com/nagareproject/sessions-redis',
     packages=find_packages(),
-    include_package_data=True,
     zip_safe=False,
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
     install_requires=['redis', 'nagare-server-http', 'nagare-services-sessions'],
     entry_points='''
         [nagare.sessions]
