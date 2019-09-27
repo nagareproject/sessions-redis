@@ -51,6 +51,7 @@ class Sessions(common.Sessions):
         self.lock_max_wait_time = lock_max_wait_time
         self.redis = redis_service
 
+    def handle_start(self, app):
         self.redis.client_setname("nagare-sessions-manager")
 
         info = self.redis.info()
