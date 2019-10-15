@@ -30,7 +30,7 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
-    install_requires=['redis', 'nagare-server-http', 'nagare-services-sessions'],
+    install_requires=['redis', 'nagare-services-redis', 'nagare-server-http', 'nagare-services-sessions'],
     entry_points='''
         [nagare.sessions]
         redis = nagare.sessions.redis_sessions:Sessions
