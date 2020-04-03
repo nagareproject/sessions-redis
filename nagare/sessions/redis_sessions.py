@@ -1,5 +1,5 @@
 # --
-# Copyright (c) 2008-2019 Net-ng.
+# Copyright (c) 2008-2020 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -43,7 +43,12 @@ class Sessions(common.Sessions):
           - ``lock_max_wait_time`` -- maximum time to wait to acquire the lock, in seconds
           - ``reset`` -- do a reset of all the sessions on startup ?
         """
-        services_service(super(Sessions, self).__init__, name, dist, **config)
+        services_service(
+            super(Sessions, self).__init__, name, dist,
+            ttl=ttl, lock_ttl=lock_ttl, lock_poll_time=lock_poll_time,
+            lock_max_wait_time=lock_max_wait_time, reset=reset,
+            **config
+        )
 
         self.ttl = ttl
         self.lock_ttl = lock_ttl
