@@ -135,7 +135,7 @@ class Sessions(common.Sessions):
         version, secure_token, session_data = sess.split(b':', 2)
 
         if (last_state_id is None) or (session_data is None) or (state_data is None) or (int(version) != self.version):
-            raise ExpirationError()
+            raise ExpirationError('invalid session structure')
 
         return int(last_state_id), secure_token, session_data, state_data
 
