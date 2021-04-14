@@ -22,15 +22,15 @@ class Sessions(common.Sessions):
         lock_ttl='float(default=0.)',
         lock_poll_time='float(default=0.1)',
         lock_max_wait_time='float(default=5.)',
-        serializer='string(default="nagare.sessions.serializer:Pickle")',
-        reset='boolean(default=True)'
+        reset_on_reload='option(on, off, invalidate, flush, default="invalidate")',
+        serializer='string(default="nagare.sessions.serializer:Pickle")'
     )
 
     def __init__(
             self,
             name, dist,
             ttl=0, lock_ttl=None, lock_poll_time=0.1, lock_max_wait_time=5,
-            reset=False,
+            reset_on_reload='invalidate',
             redis_service=None, services_service=None,
             **config
     ):
@@ -46,7 +46,8 @@ class Sessions(common.Sessions):
         services_service(
             super(Sessions, self).__init__, name, dist,
             ttl=ttl, lock_ttl=lock_ttl, lock_poll_time=lock_poll_time,
-            lock_max_wait_time=lock_max_wait_time, reset=reset,
+            lock_max_wait_time=lock_max_wait_time,
+            reset_on_reload=reset_on_reload,
             **config
         )
 
@@ -55,6 +56,11 @@ class Sessions(common.Sessions):
         self.lock_poll_time = lock_poll_time
         self.lock_max_wait_time = lock_max_wait_time
         self.redis = redis_service
+
+        self.reset_on_reload = 'invalidate' if reset_on_reload == 'on' else reset_on_reload
+
+    def generate_version_id(self):
+        return self.generate_id()
 
     def handle_start(self, app):
         self.redis.client_setname("nagare-sessions-manager")
@@ -66,13 +72,14 @@ class Sessions(common.Sessions):
                 '(see configuration parameters `maxmemory` and `maxmemory_policy`)'
             )
 
-        self.reload()
+    def handle_reload(self):
+        if self.reset_on_reload == 'invalidate':
+            self.version = self.generate_version_id()
+        else:
+            self.version = 0
 
-    def generate_version_id(self):
-        return self.generate_id()
-
-    def reload(self):
-        self.version = self.generate_version_id()
+            if self.reset_on_reload == 'flush':
+                self.redis.flushall()
 
     def check_concurrence(self, multi_processes, multi_threads):
         return
@@ -132,10 +139,13 @@ class Sessions(common.Sessions):
         """
         state_id = '%05d' % state_id
         last_state_id, sess, state_data = self.redis.hmget(KEY_PREFIX % session_id, ('state', 'sess', state_id))
+        if (last_state_id is None) or (sess is None) or (state_data is None):
+            raise ExpirationError('invalid session')
+
         version, secure_token, session_data = sess.split(b':', 2)
 
-        if (last_state_id is None) or (session_data is None) or (state_data is None) or (int(version) != self.version):
-            raise ExpirationError('invalid session structure')
+        if (session_data is None) or (int(version) != self.version):
+            raise ExpirationError('invalid session')
 
         return int(last_state_id), secure_token, session_data, state_data
 
