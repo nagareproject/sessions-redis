@@ -7,6 +7,8 @@
 # this distribution.
 # --
 
+from hashlib import md5
+
 from nagare.sessions import common
 from nagare.sessions.exceptions import ExpirationError
 
@@ -23,6 +25,7 @@ class Sessions(common.Sessions):
         lock_poll_time='float(default=0.1)',
         lock_max_wait_time='float(default=5.)',
         reset_on_reload='option(on, off, invalidate, flush, default="invalidate")',
+        version='string(default="")',
         serializer='string(default="nagare.sessions.serializer:Pickle")'
     )
 
@@ -30,7 +33,7 @@ class Sessions(common.Sessions):
             self,
             name, dist,
             ttl=0, lock_ttl=None, lock_poll_time=0.1, lock_max_wait_time=5,
-            reset_on_reload='invalidate',
+            reset_on_reload='invalidate', version='',
             redis_service=None, services_service=None,
             **config
     ):
@@ -47,7 +50,7 @@ class Sessions(common.Sessions):
             super(Sessions, self).__init__, name, dist,
             ttl=ttl, lock_ttl=lock_ttl, lock_poll_time=lock_poll_time,
             lock_max_wait_time=lock_max_wait_time,
-            reset_on_reload=reset_on_reload,
+            reset_on_reload=reset_on_reload, version=version,
             **config
         )
 
@@ -58,9 +61,10 @@ class Sessions(common.Sessions):
         self.redis = redis_service
 
         self.reset_on_reload = 'invalidate' if reset_on_reload == 'on' else reset_on_reload
+        self.version = self._version = version.encode('utf-8')
 
-    def generate_version_id(self):
-        return self.generate_id()
+    def generate_version(self):
+        return str(self.generate_id()).encode('utf-8')
 
     def handle_start(self, app):
         self.redis.client_setname("nagare-sessions-manager")
@@ -74,12 +78,13 @@ class Sessions(common.Sessions):
 
     def handle_reload(self):
         if self.reset_on_reload == 'invalidate':
-            self.version = self.generate_version_id()
-        else:
-            self.version = 0
+            version = md5((self._version or self.generate_version())).hexdigest()[:16]
+            self.version = version.encode('utf-8')
+            self.logger.info("Sessions version '{}'".format(version))
 
-            if self.reset_on_reload == 'flush':
-                self.redis.flushall()
+        if self.reset_on_reload == 'flush':
+            self.redis.flushall()
+            self.logger.info('Deleting all the sessions')
 
     def check_concurrence(self, multi_processes, multi_threads):
         return
@@ -144,7 +149,7 @@ class Sessions(common.Sessions):
 
         version, secure_token, session_data = sess.split(b':', 2)
 
-        if (session_data is None) or (int(version) != self.version):
+        if (session_data is None) or (version != self.version):
             raise ExpirationError('invalid session')
 
         return int(last_state_id), secure_token, session_data, state_data
@@ -168,7 +173,7 @@ class Sessions(common.Sessions):
         pipe.hmset(
             KEY_PREFIX % session_id,
             {
-                'sess': b':'.join((b'%d' % self.version, secure_token, session_data or '')),
+                'sess': b':'.join((self.version, secure_token, session_data or '')),
                 '%05d' % state_id: state_data
             }
         )
