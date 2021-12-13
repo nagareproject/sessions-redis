@@ -67,8 +67,6 @@ class Sessions(common.Sessions):
         return str(self.generate_id()).encode('utf-8')
 
     def handle_start(self, app):
-        self.redis.client_setname("nagare-sessions-manager")
-
         info = self.redis.info()
         if (info['maxmemory'] == 0) or (info['maxmemory_policy'] == 'noeviction'):
             self.logger.error(
