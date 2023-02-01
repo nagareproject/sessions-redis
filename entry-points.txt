@@ -1,0 +1,2 @@
+[nagare.sessions]
+redis = nagare.sessions.redis_sessions:Sessions

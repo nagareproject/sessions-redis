@@ -1,5 +1,5 @@
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -16,8 +16,8 @@ KEY_PREFIX = 'nagare_%d_'
 
 
 class Sessions(common.Sessions):
-    """Sessions manager for sessions kept in an external redis server
-    """
+    """Sessions manager for sessions kept in an external redis server."""
+
     CONFIG_SPEC = dict(
         common.Sessions.CONFIG_SPEC,
         ttl='integer(default=None)',
@@ -26,18 +26,24 @@ class Sessions(common.Sessions):
         lock_max_wait_time='float(default=5.)',
         reset_on_reload='option(on, off, invalidate, flush, default="invalidate")',
         version='string(default="")',
-        serializer='string(default="nagare.sessions.serializer:Pickle")'
+        serializer='string(default="nagare.sessions.serializer:Pickle")',
     )
 
     def __init__(
-            self,
-            name, dist,
-            ttl=0, lock_ttl=None, lock_poll_time=0.1, lock_max_wait_time=5,
-            reset_on_reload='invalidate', version='',
-            redis_service=None, services_service=None,
-            **config
+        self,
+        name,
+        dist,
+        ttl=0,
+        lock_ttl=None,
+        lock_poll_time=0.1,
+        lock_max_wait_time=5,
+        reset_on_reload='invalidate',
+        version='',
+        redis_service=None,
+        services_service=None,
+        **config,
     ):
-        """Initialization
+        """Initialization.
 
         In:
           - ``ttl`` -- sessions and continuations timeout, in seconds (0 = no timeout)
@@ -47,11 +53,16 @@ class Sessions(common.Sessions):
           - ``reset`` -- do a reset of all the sessions on startup ?
         """
         services_service(
-            super(Sessions, self).__init__, name, dist,
-            ttl=ttl, lock_ttl=lock_ttl, lock_poll_time=lock_poll_time,
+            super(Sessions, self).__init__,
+            name,
+            dist,
+            ttl=ttl,
+            lock_ttl=lock_ttl,
+            lock_poll_time=lock_poll_time,
             lock_max_wait_time=lock_max_wait_time,
-            reset_on_reload=reset_on_reload, version=version,
-            **config
+            reset_on_reload=reset_on_reload,
+            version=version,
+            **config,
         )
 
         self.ttl = ttl
@@ -92,12 +103,11 @@ class Sessions(common.Sessions):
 
     def get_lock(self, session_id):
         return self.redis.lock(
-            (KEY_PREFIX + 'lock') % session_id,
-            self.lock_ttl, self.lock_poll_time, self.lock_max_wait_time
+            (KEY_PREFIX + 'lock') % session_id, self.lock_ttl, self.lock_poll_time, self.lock_max_wait_time
         )
 
     def _create(self, session_id, secure_token):
-        """Create a new session
+        """Create a new session.
 
         Return:
           - id of the session
@@ -105,14 +115,7 @@ class Sessions(common.Sessions):
           - secure token associated to the session
           - session lock
         """
-        self.redis.hmset(
-            KEY_PREFIX % session_id,
-            {
-                'state': 0,
-                'sess': secure_token,
-                '00000': ''
-            }
-        )
+        self.redis.hmset(KEY_PREFIX % session_id, {'state': 0, 'sess': secure_token, '00000': ''})
 
         if self.ttl:
             self.redis.expire(KEY_PREFIX % session_id, self.ttl)
@@ -120,7 +123,7 @@ class Sessions(common.Sessions):
         return session_id, 0, secure_token, self.get_lock(session_id)
 
     def delete(self, session_id):
-        """Delete a session
+        """Delete a session.
 
         In:
           - ``session_id`` -- id of the session to delete
@@ -128,7 +131,7 @@ class Sessions(common.Sessions):
         self.redis.delete(KEY_PREFIX % session_id)
 
     def _fetch(self, session_id, state_id):
-        """Retrieve a state with its associated objects graph
+        """Retrieve a state with its associated objects graph.
 
         In:
           - ``session_id`` -- session id of this state
@@ -153,7 +156,7 @@ class Sessions(common.Sessions):
         return int(last_state_id), secure_token, session_data, state_data
 
     def _store(self, session_id, state_id, secure_token, use_same_state, session_data, state_data):
-        """Store a state and its associated objects graph
+        """Store a state and its associated objects graph.
 
         In:
           - ``session_id`` -- session id of this state
@@ -170,10 +173,7 @@ class Sessions(common.Sessions):
 
         pipe.hmset(
             KEY_PREFIX % session_id,
-            {
-                'sess': b':'.join((self.version, secure_token, session_data or '')),
-                '%05d' % state_id: state_data
-            }
+            {'sess': b':'.join((self.version, secure_token, session_data or '')), '%05d' % state_id: state_data},
         )
 
         if self.ttl:
