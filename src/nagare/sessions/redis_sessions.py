@@ -115,7 +115,7 @@ class Sessions(common.Sessions):
           - secure token associated to the session
           - session lock
         """
-        self.redis.hmset(KEY_PREFIX % session_id, {'state': 0, 'sess': secure_token, '00000': ''})
+        self.redis.hset(KEY_PREFIX % session_id, mapping={'state': 0, 'sess': secure_token, '00000': ''})
 
         if self.ttl:
             self.redis.expire(KEY_PREFIX % session_id, self.ttl)
@@ -171,9 +171,12 @@ class Sessions(common.Sessions):
         if not use_same_state:
             pipe.hincrby(KEY_PREFIX % session_id, 'state', 1)
 
-        pipe.hmset(
+        pipe.hset(
             KEY_PREFIX % session_id,
-            {'sess': b':'.join((self.version, secure_token, session_data or '')), '%05d' % state_id: state_data},
+            mapping={
+                'sess': b':'.join((self.version, secure_token, session_data or '')),
+                '%05d' % state_id: state_data,
+            },
         )
 
         if self.ttl:
